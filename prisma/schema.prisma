@@ -1,0 +1,171 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CLIENT
+  BUSINESS
+  DRIVER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  READY_FOR_PICKUP
+  IN_TRANSIT
+  DELIVERED
+  CANCELLED
+}
+
+model User {
+  id         String   @id @default(uuid())
+  name       String?
+  email      String   @unique
+  password   String? // nullable si usa OAuth
+  provider   String? // "google", "email", etc.
+  providerId String?
+  role       Role     @default(CLIENT)
+  zoneId     String?
+  zone       Zone?    @relation(fields: [zoneId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business BusinessProfile?
+  driver   DriverProfile?
+  basket   Basket?
+  orders   Order[]
+}
+
+model Zone {
+  id       String    @id @default(uuid())
+  name     String
+  // coordenadas, ciudad, etc.
+  products Product[]
+  users    User[]
+}
+
+model BusinessProfile {
+  id          String  @id @default(uuid())
+  user        User    @relation(fields: [userId], references: [id])
+  userId      String  @unique
+  storeName   String
+  description String?
+}
+
+model DriverProfile {
+  id      String  @id @default(uuid())
+  user    User    @relation(fields: [userId], references: [id])
+  userId  String  @unique
+  vehicle String?
+  plate   String?
+  phone   String?
+}
+
+model Product {
+  id          String       @id @default(uuid())
+  title       String
+  description String?
+  price       Float
+  stock       Int          @default(0)
+  zone        Zone?        @relation(fields: [zoneId], references: [id])
+  zoneId      String?
+  businessId  String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  BoxProduct  BoxProduct[]
+  BasketItem  BasketItem[]
+  OrderItem   OrderItem[]
+}
+
+model Box {
+  id          String       @id @default(uuid())
+  name        String
+  description String?
+  price       Float
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  products    BoxProduct[]
+  isTemplate  Boolean      @default(true)
+
+  // relaciones opuestas añadidas:
+  basketItems BasketItem[]
+  orderItems  OrderItem[]
+}
+
+model BoxProduct {
+  id        String  @id @default(uuid())
+  box       Box     @relation(fields: [boxId], references: [id])
+  boxId     String
+  product   Product @relation(fields: [productId], references: [id])
+  productId String
+  qty       Int     @default(1)
+}
+
+model Basket {
+  id        String       @id @default(uuid())
+  user      User         @relation(fields: [userId], references: [id])
+  userId    String       @unique
+  items     BasketItem[]
+  updatedAt DateTime     @updatedAt
+  createdAt DateTime     @default(now())
+}
+
+model BasketItem {
+  id            String   @id @default(uuid())
+  basket        Basket   @relation(fields: [basketId], references: [id])
+  basketId      String
+  product       Product? @relation(fields: [productId], references: [id])
+  productId     String?
+  box           Box?     @relation(fields: [boxId], references: [id])
+  boxId         String?
+  quantity      Int      @default(1)
+  priceSnapshot Float
+  createdAt     DateTime @default(now())
+}
+
+model Order {
+  id              String      @id @default(uuid())
+  user            User        @relation(fields: [userId], references: [id])
+  userId          String
+  status          OrderStatus @default(PENDING)
+  totalAmount     Float
+  currency        String      @default("COP")
+  items           OrderItem[]
+  payment         Payment?
+  deliveryAddress String?
+  zoneId          String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+model OrderItem {
+  id        String   @id @default(uuid())
+  order     Order    @relation(fields: [orderId], references: [id])
+  orderId   String
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id])
+  boxId     String?
+  box       Box?     @relation(fields: [boxId], references: [id])
+  qty       Int      @default(1)
+  price     Float
+}
+
+model Payment {
+  id                String   @id @default(uuid())
+  order             Order    @relation(fields: [orderId], references: [id])
+  orderId           String   @unique
+  provider          String // "pse", "stripe", etc.
+  providerStatus    String?
+  providerReference String?
+  amount            Float
+  currency          String   @default("COP")
+  metadata          Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
