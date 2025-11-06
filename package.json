@@ -2,11 +2,12 @@
   "name": "auth-service",
   "version": "1.0.0",
   "description": "",
-  "main": "src/server.js",
+  "main": "dist/server.js",
   "scripts": {
     "dev": "nodemon src/server.ts",
     "build": "tsc",
-    "start": "node src/server.js",
+    "start": "node dist/server.js",
+    "start:prod": "npm run build && npm run start",
     "test:email": "ts-node src/test-email.ts"
   },
   "keywords": [],
@@ -42,5 +43,8 @@
     "nodemon": "^3.1.10",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=18.x"
   }
 }
